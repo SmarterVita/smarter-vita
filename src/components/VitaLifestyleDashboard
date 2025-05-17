@@ -1,0 +1,87 @@
+// Modularized, Secured, and Brutally Improved VITA Dashboard
+import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import html2pdf from 'html2pdf.js';
+import { getAuth, onAuthStateChanged } from 'firebase/auth';
+import { getFirestore, doc, getDoc, setDoc } from 'firebase/firestore';
+import ChatBox from './components/ChatBox';
+import ScanUploader from './components/ScanUploader';
+import SupplementList from './components/SupplementList';
+import MealPlanner from './components/MealPlanner';
+import AutoshipGate from './components/AutoshipGate';
+import DailyHabits from './components/DailyHabits';
+import MindfulnessBox from './components/MindfulnessBox';
+import ShoppingList from './components/ShoppingList';
+import ProgressCharts from './components/ProgressCharts';
+import WellnessTip from './components/WellnessTip';
+import VoiceInput from './components/VoiceInput';
+import ResetButton from './components/ResetButton';
+import useVitaChat from './hooks/useVitaChat';
+import useUserProfile from './hooks/useUserProfile';
+
+const auth = getAuth();
+const db = getFirestore();
+
+export default function VitaDashboard() {
+  const {
+    chatInput, setChatInput,
+    chatHistory, setChatHistory,
+    isLoading, language, setLanguage,
+    reorderMap, supplements,
+    handleChatSubmit, exportToPDF
+  } = useVitaChat();
+
+  const { autoshipActive, userId } = useUserProfile();
+
+  if (!autoshipActive) return <AutoshipGate />;
+
+  return (
+    <div className="min-h-screen bg-gradient-to-tr from-white to-[#F5F1E6] text-[#2D2D2D] p-6 font-[Inter] dark:bg-[#121212] dark:text-white">
+      <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b pb-4 mb-6 gap-4 sm:gap-0">
+        <motion.h1 initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }} className="text-3xl font-semibold tracking-tight">
+          VITA – Elite Wellness AI Assistant
+        </motion.h1>
+        <div className="flex gap-4 items-center">
+          <select className="border p-2 rounded shadow-sm" value={language} onChange={(e) => setLanguage(e.target.value)}>
+            <option>English</option>
+            <option>Français</option>
+            <option>Español</option>
+          </select>
+          <button onClick={exportToPDF} className="bg-[#7DCFB6] text-white px-4 py-2 rounded-lg hover:bg-[#65b8a0] text-sm">Export Summary</button>
+        </div>
+      </header>
+
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }} className="grid grid-cols-1 md:grid-cols-2 gap-6" id="vita-summary">
+        <ScanUploader onUpload={() => {}} />
+        <DailyHabits habits={['Hydrate', 'Supplements', 'Workout', 'Gratitude']} userId={userId} />
+        <section className="bg-white/90 dark:bg-[#1e1e1e] border p-6 rounded-2xl shadow-lg">
+          <h2 className="text-xl font-bold mb-3 text-[#7DCFB6]">Manual Input</h2>
+          <textarea
+            className="w-full border p-3 rounded text-sm resize-none focus:outline-none focus:ring-2 focus:ring-[#7DCFB6] dark:bg-[#2a2a2a]"
+            placeholder="Enter symptoms, goals, or scan values..."
+            value={chatInput}
+            onChange={(e) => setChatInput(e.target.value)}
+            rows={4}
+          ></textarea>
+          <VoiceInput onResult={(transcript) => setChatInput(prev => `${prev} ${transcript}`)} />
+          <motion.button whileTap={{ scale: 0.95 }} onClick={handleChatSubmit} className="mt-4 bg-[#7DCFB6] text-white px-6 py-2 rounded-lg font-medium hover:bg-[#65b8a0] transition w-full sm:w-auto">Submit to VITA</motion.button>
+        </section>
+
+        <ChatBox chatHistory={chatHistory} chatInput={chatInput} isLoading={isLoading} onInputChange={(e) => setChatInput(e.target.value)} onSubmit={handleChatSubmit} autoScroll={true} />
+
+        <SupplementList suggestions={supplements} reorderMap={reorderMap} />
+        <MealPlanner />
+        <ShoppingList />
+        <MindfulnessBox />
+        <ProgressCharts userId={userId} />
+        <WellnessTip tip="Drink 1 oz of water per 2 lbs of body weight." />
+        <ResetButton userId={userId} setChatInput={setChatInput} setChatHistory={setChatHistory} />
+
+        <div className="text-center mt-4">
+          <p className="text-sm text-gray-600 dark:text-gray-300">Update your wellness goals anytime in <Link to='/settings' className="text-[#7DCFB6] font-semibold underline">Settings</Link>.</p>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
